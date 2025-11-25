@@ -1,0 +1,12 @@
+{
+  "name": "flashcard-functions",
+  "version": "1.0.0",
+  "description": "Backend functions for Flashcard App",
+  "main": "cloud-sync.js",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {
+    "node-fetch": "^2.7.0"
+  }
+}
