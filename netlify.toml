@@ -1,8 +1,20 @@
 [build]
+  # 静态文件目录（根目录）
   publish = "."
+  # 后端函数目录
   functions = "netlify/functions"
+  # 构建命令（这会触发上面的 postinstall）
+  command = "npm run build"
 
+# API 重写规则，方便前端调用
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
+
+# 安全头设置（可选）
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"

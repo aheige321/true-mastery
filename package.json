@@ -1,0 +1,9 @@
+{
+  "name": "true-mastery-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "echo 'No build step for static site'",
+    "postinstall": "cd netlify/functions && npm install"
+  }
+}
