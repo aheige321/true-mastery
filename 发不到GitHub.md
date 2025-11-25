@@ -50,7 +50,7 @@ git branch -M main
 
 # 5. 关联远程仓库 (请将下面的 URL 换成您刚才在 GitHub 创建的仓库地址！！！)
 # 格式类似：git remote add origin https://github.com/您的用户名/true-mastery.git
-git remote add origin https://github.com/您的用户名/仓库名.git
+git remote add origin https://github.com/aheige321/true-mastery.git
 
 # 6. 推送到 GitHub
 git push -u origin main
