@@ -13,9 +13,11 @@
     <header class="app-header">
         <div class="logo">真掌握</div>
         <div class="header-actions">
-            <i class="fas fa-search" id="btn-header-search"></i>
-            <i class="fas fa-moon" id="theme-toggle"></i>
-            <i class="fas fa-sync-alt" id="sync-btn"></i>
+            <i class="fas fa-search" id="btn-header-search" title="搜索"></i>
+            <!-- 新增：全屏按钮 -->
+            <i class="fas fa-expand" id="btn-fullscreen" title="全屏模式"></i>
+            <i class="fas fa-moon" id="theme-toggle" title="夜间模式"></i>
+            <i class="fas fa-sync-alt" id="sync-btn" title="同步"></i>
         </div>
     </header>
 
@@ -61,9 +63,7 @@
                             <div class="legend-item"><span class="dot new"></span><span id="stat-new">新卡片: 0</span></div>
                             <div class="legend-item"><span class="dot learning"></span><span id="stat-learning">学习中: 0</span></div>
                             <div class="legend-item"><span class="dot review"></span><span id="stat-review">待复习: 0</span></div>
-                            <!-- 修改：将“已掌握”改为“熟练”，新增“永久掌握” -->
-                            <div class="legend-item"><span class="dot mastered"></span><span id="stat-mastered">熟练: 0</span></div>
-                            <div class="legend-item"><span class="dot graduated"></span><span id="stat-graduated">永久掌握: 0</span></div>
+                            <div class="legend-item"><span class="dot mastered"></span><span id="stat-mastered">已掌握: 0</span></div>
                         </div>
                     </div>
                 </div>
@@ -95,6 +95,15 @@
                             <option value="1.0" selected>1.0x (正常)</option>
                             <option value="1.2">1.2x (快)</option>
                             <option value="1.5">1.5x (极快)</option>
+                        </select>
+                    </div>
+                    <!-- 新增：自动朗读次数 -->
+                    <div class="setting-item">
+                        <span>自动朗读次数</span>
+                        <select id="setting-tts-repeat">
+                            <option value="1" selected>1 遍</option>
+                            <option value="2">2 遍</option>
+                            <option value="3">3 遍</option>
                         </select>
                     </div>
                     <div class="setting-item">
@@ -148,7 +157,7 @@
                         <i class="fas fa-chevron-right"></i>
                     </div>
                 </div>
-                <div class="app-version">Version 2.0.0</div>
+                <div class="app-version">Version 2.1.0</div>
             </div>
         </div>
 

@@ -7,45 +7,26 @@ const srs = {
         let nextEase = card.easeFactor || 2.5;
         
         const currentInterval = card.interval || 0;
-        // 定义：间隔小于 1天 (1440分钟) 的都属于“学习/重学”阶段
         const isLearning = (card.status === 'new' || card.status === 'learning') || currentInterval < 1440;
 
         if (isLearning) {
-            // --- 学习/重学阶段 ---
             if (rating === 'again') {
-                nextInterval = 1; // 全忘：1分钟
+                nextInterval = 1; 
                 nextEase = Math.max(1.3, nextEase - 0.2);
             } else if (rating === 'hard') {
-                nextInterval = 6; // 模糊：6分钟
+                nextInterval = 6; 
                 nextEase = Math.max(1.3, nextEase - 0.15);
             } else if (rating === 'good') {
-                // 犹豫：1m -> 10m -> 1天
-                if (currentInterval < 10) {
-                    nextInterval = 10; 
-                } else {
-                    nextInterval = 1440; 
-                }
+                if (currentInterval < 10) { nextInterval = 10; } else { nextInterval = 1440; }
             } else if (rating === 'easy') {
-                // 秒懂：
-                if (card.status === 'new') {
-                    // 纯新卡：直接 4天
-                    nextInterval = 4 * 1440; 
-                } else {
-                    // 重学卡 (刚点过全忘)：
-                    // 1. 刚忘掉(间隔<10m) -> 10分钟 (改为10分钟，更保守地验证)
-                    // 2. 已经过了一关(>=10m) -> 1天 (毕业)
-                    if (currentInterval < 10) {
-                        nextInterval = 10; // <--- 这里从 60 改成了 10
-                    } else {
-                        nextInterval = 1440; 
-                    }
+                if (card.status === 'new') { nextInterval = 4 * 1440; } else {
+                    if (currentInterval < 10) { nextInterval = 10; } else { nextInterval = 1440; }
                 }
                 nextEase += 0.15;
             }
         } else {
-            // --- 复习阶段 (间隔 >= 1天) ---
             if (rating === 'again') {
-                nextInterval = 10; // 忘记了：退回10分钟
+                nextInterval = 10; 
                 nextEase = Math.max(1.3, nextEase - 0.2);
             } else if (rating === 'hard') {
                 nextInterval = Math.floor(currentInterval * 1.2);
@@ -71,7 +52,7 @@ const srs = {
 };
 
 /**
- * 2. TTS 语音模块
+ * 2. TTS 语音模块 (带缓存 + 循环朗读)
  */
 const tts = {
     isPlaying: false,
@@ -96,6 +77,7 @@ const tts = {
         const lang = isEnglish ? 'en' : 'zh';
         const browserLang = isEnglish ? 'en-US' : 'zh-CN';
         const rate = parseFloat(localStorage.getItem('ttsRate') || '1.0');
+        const repeatCount = parseInt(localStorage.getItem('ttsRepeat') || '1');
         const useOnline = store.state.settings.useOnlineTTS;
 
         this.isPlaying = true;
@@ -103,12 +85,26 @@ const tts = {
 
         const finish = () => { this.isPlaying = false; if (onEnd) onEnd(); };
 
+        // 递归播放函数
+        let playedCount = 0;
+
         const speakBrowser = () => {
             if ('speechSynthesis' in window) {
-                const u = new SpeechSynthesisUtterance(cleanText);
-                u.lang = browserLang; u.rate = rate;
-                u.onend = finish; u.onerror = finish;
-                window.speechSynthesis.speak(u);
+                const playOne = () => {
+                    if (playedCount >= repeatCount || !this.isPlaying) {
+                        finish();
+                        return;
+                    }
+                    const u = new SpeechSynthesisUtterance(cleanText);
+                    u.lang = browserLang; u.rate = rate;
+                    u.onend = () => {
+                        playedCount++;
+                        playOne(); // 播放下一次
+                    };
+                    u.onerror = finish;
+                    window.speechSynthesis.speak(u);
+                };
+                playOne();
             } else {
                 finish();
             }
@@ -123,22 +119,40 @@ const tts = {
                 const cachedRes = await cache.match(url);
                 let blob;
                 if (cachedRes) {
-                    console.log('🔥 命中 TTS 缓存');
                     blob = await cachedRes.blob();
                 } else {
-                    console.log('🌍 请求 TTS 网络');
                     const response = await fetch(url);
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     cache.put(url, response.clone());
                     blob = await response.blob();
                 }
+                
                 const audioUrl = URL.createObjectURL(blob);
                 const audio = new Audio(audioUrl);
                 audio.playbackRate = rate;
-                audio.onended = () => { finish(); URL.revokeObjectURL(audioUrl); };
-                audio.onerror = (e) => { console.warn('音频播放出错', e); speakBrowser(); };
                 this.currentAudio = audio;
-                await audio.play();
+
+                const playOne = () => {
+                    if (playedCount >= repeatCount || !this.isPlaying) {
+                        finish();
+                        URL.revokeObjectURL(audioUrl);
+                        return;
+                    }
+                    audio.currentTime = 0;
+                    audio.play().catch(e => {
+                        console.warn('音频播放被阻挡', e);
+                        finish();
+                    });
+                };
+
+                audio.onended = () => {
+                    playedCount++;
+                    playOne(); // 循环播放
+                };
+                audio.onerror = () => { speakBrowser(); }; // 出错降级
+
+                playOne(); // 开始第一次播放
+
             } catch (e) {
                 console.error('TTS 请求失败:', e);
                 speakBrowser(); 
@@ -341,6 +355,9 @@ function init() {
     
     const savedRate = localStorage.getItem('ttsRate');
     if (savedRate) document.getElementById('setting-tts-rate').value = savedRate;
+    const savedRepeat = localStorage.getItem('ttsRepeat');
+    if (savedRepeat) document.getElementById('setting-tts-repeat').value = savedRepeat;
+    
     document.getElementById('setting-auto-speak-front').checked = store.state.settings.autoSpeakFront || false;
     document.getElementById('setting-auto-speak-back').checked = store.state.settings.autoSpeakBack || false;
     document.getElementById('setting-use-online-tts').checked = store.state.settings.useOnlineTTS || false;
@@ -413,6 +430,22 @@ function renderHeatmap() {
 }
 
 function applyTheme() { if (store.state.settings.darkMode) document.body.classList.add('dark'); else document.body.classList.remove('dark'); }
+
+// --- 全屏功能 ---
+function toggleFullscreen() {
+    const btn = document.getElementById('btn-fullscreen');
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+        btn.classList.remove('fa-expand');
+        btn.classList.add('fa-compress');
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+            btn.classList.remove('fa-compress');
+            btn.classList.add('fa-expand');
+        }
+    }
+}
 
 function startStudy(deckId) {
     store.state.currentDeckId = deckId;
@@ -561,7 +594,8 @@ function bindEvents() {
     document.getElementById('exit-study').onclick = () => { switchView('view-decks'); renderDecks(); };
     document.getElementById('exit-manage').onclick = () => { switchView('view-decks'); renderDecks(); };
     document.getElementById('exit-trash').onclick = () => { switchView('view-settings'); };
-    
+    document.getElementById('btn-fullscreen').onclick = toggleFullscreen;
+
     els.study.card.onclick = (e) => {
         if (e.target.closest('button')) return;
         const backWrapper = els.study.backWrapper;
@@ -600,6 +634,7 @@ function bindEvents() {
     document.getElementById('theme-toggle').onclick = () => { store.state.settings.darkMode = !store.state.settings.darkMode; store.save(); applyTheme(); };
     
     document.getElementById('setting-tts-rate').onchange = (e) => { localStorage.setItem('ttsRate', e.target.value); showToast(`语速已设置为 ${e.target.value}x`); };
+    document.getElementById('setting-tts-repeat').onchange = (e) => { localStorage.setItem('ttsRepeat', e.target.value); }; // Save repeat count
     document.getElementById('setting-auto-speak-front').onchange = (e) => { store.state.settings.autoSpeakFront = e.target.checked; store.save(); };
     document.getElementById('setting-auto-speak-back').onchange = (e) => { store.state.settings.autoSpeakBack = e.target.checked; store.save(); };
     document.getElementById('setting-use-online-tts').onchange = (e) => { store.state.settings.useOnlineTTS = e.target.checked; store.save(); };
