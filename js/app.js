@@ -81,7 +81,6 @@ function init() {
     if (document.getElementById('setting-new-limit')) {
         document.getElementById('setting-new-limit').value = store.state.settings.newLimit || 20;
     }
-    // 修复：初始化朗读次数回显
     if (document.getElementById('setting-tts-repeat')) {
         document.getElementById('setting-tts-repeat').value = store.state.settings.ttsRepeat || 1;
     }
@@ -131,9 +130,77 @@ function renderDecks() {
     }
 }
 
-function renderStats() { /* 保持原逻辑 */ }
-function renderHeatmap() { /* 保持原逻辑 */ }
+// --- 修复：完整的统计渲染函数 ---
+function renderStats() {
+    const cards = store.state.cards.filter(c => !c.deleted);
+    const decks = store.state.decks.filter(d => !d.deleted);
+
+    // 1. 基础数字
+    if(els.stats.totalDecks) els.stats.totalDecks.textContent = decks.length;
+    if(els.stats.totalCards) els.stats.totalCards.textContent = cards.length;
+
+    // 2. 饼图数据
+    const counts = { new: 0, learning: 0, review: 0, mastered: 0 };
+    cards.forEach(c => {
+        if (c.status === 'graduated') counts.mastered++;
+        else if (c.status === 'review') counts.review++;
+        else if (c.status === 'learning') counts.learning++;
+        else counts.new++;
+    });
+
+    if(els.stats.statNew) els.stats.statNew.textContent = `新卡片: ${counts.new}`;
+    if(els.stats.statLearning) els.stats.statLearning.textContent = `学习中: ${counts.learning}`;
+    if(els.stats.statReview) els.stats.statReview.textContent = `待复习: ${counts.review}`;
+    if(els.stats.statMastered) els.stats.statMastered.textContent = `已掌握: ${counts.mastered}`;
+
+    // 3. 绘制饼图 (CSS Conic Gradient)
+    const total = cards.length || 1;
+    const pNew = (counts.new / total) * 100;
+    const pLearn = (counts.learning / total) * 100;
+    const pRev = (counts.review / total) * 100;
+    // pMastered 是剩下的部分
+
+    if(els.stats.pieChart) {
+        els.stats.pieChart.style.background = `conic-gradient(
+            #a4b0be 0% ${pNew}%, 
+            #ff9f43 ${pNew}% ${pNew + pLearn}%, 
+            #ff4d4d ${pNew + pLearn}% ${pNew + pLearn + pRev}%, 
+            #2ed573 ${pNew + pLearn + pRev}% 100%
+        )`;
+    }
+
+    // 4. 渲染热力图
+    renderHeatmap();
+}
+
+function renderHeatmap() {
+    const heatmap = els.stats.heatmap;
+    if (!heatmap) return;
+    heatmap.innerHTML = '';
+    
+    const today = new Date();
+    // 生成过去 365 天的数据
+    for (let i = 364; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(today.getDate() - i);
+        const key = d.toISOString().split('T')[0];
+        const count = store.state.stats.activity[key] || 0;
+        
+        let level = 'l0';
+        if (count > 0) level = 'l1';
+        if (count > 2) level = 'l2';
+        if (count > 5) level = 'l3';
+        if (count > 10) level = 'l4';
+
+        const dot = document.createElement('div');
+        dot.className = `heat-cell ${level}`;
+        dot.title = `${key}: ${count} 次学习`;
+        heatmap.appendChild(dot);
+    }
+}
+
 function applyTheme() { if (store.state.settings.darkMode) document.body.classList.add('dark'); else document.body.classList.remove('dark'); }
+
 async function compressImage(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -255,7 +322,6 @@ function updateTTSButtonState(isPlaying, activeBtn = null) {
     if (isPlaying && activeBtn) { activeBtn.classList.add('active'); activeBtn.querySelector('span').textContent = '停止'; activeBtn.querySelector('.wave').classList.remove('hidden'); }
 }
 
-// ... (openManageView 等其他函数保持不变) ...
 function openManageView(deckId) { store.state.currentDeckId = deckId; const deck = store.state.decks.find(d => d.id === deckId); els.manage.title.textContent = deck ? deck.name : '管理卡片'; els.manage.search.value = ''; renderCardList(); switchView('view-manage'); }
 function renderCardList() { const deckId = store.state.currentDeckId; const filter = els.manage.search.value.trim().toLowerCase(); const cards = store.getCardsForDeck(deckId).filter(c => !filter || c.front.toLowerCase().includes(filter) || c.back.toLowerCase().includes(filter)); els.manage.list.innerHTML = ''; cards.forEach(card => { const div = document.createElement('div'); div.className = 'card-list-item'; let tagsHtml = ''; if (card.tags && card.tags.length > 0) { tagsHtml = `<div class="card-list-tags">${card.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>`; } let imgIcon = (card.frontImage || card.backImage || card.image) ? '<i class="fas fa-image" style="color:var(--primary);margin-right:5px;"></i>' : ''; div.innerHTML = `<div class="card-list-info"><div class="card-list-front">${imgIcon}${card.front}</div><div class="card-list-back">${card.back}</div>${tagsHtml}</div><div class="card-list-actions"><i class="fas fa-edit icon-edit"></i><i class="fas fa-trash icon-del" style="color:#ff4d4d"></i></div>`; div.querySelector('.icon-edit').onclick = (e) => { e.stopPropagation(); openCardModal(card); }; div.querySelector('.icon-del').onclick = (e) => { e.stopPropagation(); if(confirm('删除此卡片？')) { store.deleteCard(card.id); renderCardList(); } }; els.manage.list.appendChild(div); }); }
 function openTrashView() { switchView('view-trash'); renderTrashList(); }
@@ -381,7 +447,6 @@ function bindEvents() {
     document.getElementById('setting-auto-speak-back').onchange = (e) => { store.state.settings.autoSpeakBack = e.target.checked; store.save(); };
     document.getElementById('setting-use-online-tts').onchange = (e) => { store.state.settings.useOnlineTTS = e.target.checked; store.save(); };
     document.getElementById('setting-new-limit').onchange = (e) => { store.state.settings.newLimit = e.target.value; store.save(); showToast(`每日新卡限制: ${e.target.value === '9999' ? '无限制' : e.target.value + '张'}`); };
-    // 修复：添加朗读次数变更监听
     document.getElementById('setting-tts-repeat').onchange = (e) => { store.state.settings.ttsRepeat = e.target.value; store.save(); showToast(`自动朗读次数: ${e.target.value}遍`); };
 
     document.getElementById('btn-export-json').onclick = () => { const data = { decks: store.state.decks.filter(d => !d.deleted), cards: store.state.cards.filter(c => !c.deleted), settings: store.state.settings }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `backup_${new Date().toISOString().slice(0,10)}.json`; a.click(); showToast('已导出 JSON'); };
