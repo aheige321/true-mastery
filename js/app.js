@@ -54,7 +54,9 @@ const els = {
     },
     toast: document.getElementById('toast'),
     loading: document.getElementById('loading-mask'),
-    fileInput: document.getElementById('file-import-input')
+    fileInput: document.getElementById('file-import-input'),
+    // 新增：全屏按钮引用
+    btnFullscreen: document.getElementById('btn-fullscreen')
 };
 
 let currentStudyQueue = [];
@@ -130,16 +132,13 @@ function renderDecks() {
     }
 }
 
-// --- 修复：完整的统计渲染函数 ---
 function renderStats() {
     const cards = store.state.cards.filter(c => !c.deleted);
     const decks = store.state.decks.filter(d => !d.deleted);
 
-    // 1. 基础数字
     if(els.stats.totalDecks) els.stats.totalDecks.textContent = decks.length;
     if(els.stats.totalCards) els.stats.totalCards.textContent = cards.length;
 
-    // 2. 饼图数据
     const counts = { new: 0, learning: 0, review: 0, mastered: 0 };
     cards.forEach(c => {
         if (c.status === 'graduated') counts.mastered++;
@@ -153,12 +152,10 @@ function renderStats() {
     if(els.stats.statReview) els.stats.statReview.textContent = `待复习: ${counts.review}`;
     if(els.stats.statMastered) els.stats.statMastered.textContent = `已掌握: ${counts.mastered}`;
 
-    // 3. 绘制饼图 (CSS Conic Gradient)
     const total = cards.length || 1;
     const pNew = (counts.new / total) * 100;
     const pLearn = (counts.learning / total) * 100;
     const pRev = (counts.review / total) * 100;
-    // pMastered 是剩下的部分
 
     if(els.stats.pieChart) {
         els.stats.pieChart.style.background = `conic-gradient(
@@ -168,8 +165,6 @@ function renderStats() {
             #2ed573 ${pNew + pLearn + pRev}% 100%
         )`;
     }
-
-    // 4. 渲染热力图
     renderHeatmap();
 }
 
@@ -179,7 +174,6 @@ function renderHeatmap() {
     heatmap.innerHTML = '';
     
     const today = new Date();
-    // 生成过去 365 天的数据
     for (let i = 364; i >= 0; i--) {
         const d = new Date();
         d.setDate(today.getDate() - i);
@@ -455,6 +449,21 @@ function bindEvents() {
     document.getElementById('btn-download-cloud').onclick = async () => { if(confirm("确定要从云端下载数据覆盖本地吗？\n(本地未同步的修改将丢失)")) { toggleLoading(true); try { await syncService.forceDownload(); renderDecks(); showToast('下载并恢复成功', 'success'); } catch(e) { showToast('下载失败: ' + e.message, 'error'); } finally { toggleLoading(false); } } };
     document.getElementById('btn-force-sync').onclick = async () => { if(confirm("【警告】\n这将强制用本地数据覆盖云端。\n确定要继续吗？")) { toggleLoading(true); try { await syncService.forceUpload(); showToast('覆盖成功', 'success'); } catch(e) { showToast('操作失败', 'error'); } finally { toggleLoading(false); } } };
     document.getElementById('btn-clear-data').onclick = () => { if(confirm("【危险】\n确定要清空所有本地数据吗？\n(操作不可撤销)")) { store.reset(); location.reload(); } };
+
+    // 修复：全屏按钮事件
+    if(els.btnFullscreen) {
+        els.btnFullscreen.onclick = () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        };
+    }
 }
 
 function switchView(viewName) {
