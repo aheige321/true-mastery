@@ -17,9 +17,9 @@ const els = {
         'view-trash': document.getElementById('view-trash')
     },
     study: {
-        container: document.querySelector('.flashcard-container'), // 新增：容器引用
+        container: document.querySelector('.flashcard-container'),
         card: document.getElementById('flashcard'),
-        hint: document.querySelector('.card-hint'), // 新增：提示语引用
+        hint: document.querySelector('.card-hint'),
         front: document.getElementById('card-front-content'),
         frontImage: document.getElementById('card-front-image'),
         frontTags: document.getElementById('card-front-tags'),
@@ -77,8 +77,13 @@ function init() {
     document.getElementById('setting-auto-speak-front').checked = store.state.settings.autoSpeakFront || false;
     document.getElementById('setting-auto-speak-back').checked = store.state.settings.autoSpeakBack || false;
     document.getElementById('setting-use-online-tts').checked = store.state.settings.useOnlineTTS || false;
+    
     if (document.getElementById('setting-new-limit')) {
         document.getElementById('setting-new-limit').value = store.state.settings.newLimit || 20;
+    }
+    // 修复：初始化朗读次数回显
+    if (document.getElementById('setting-tts-repeat')) {
+        document.getElementById('setting-tts-repeat').value = store.state.settings.ttsRepeat || 1;
     }
 }
 
@@ -126,7 +131,7 @@ function renderDecks() {
     }
 }
 
-function renderStats() { /* 保持原逻辑，为节省篇幅略过 */ }
+function renderStats() { /* 保持原逻辑 */ }
 function renderHeatmap() { /* 保持原逻辑 */ }
 function applyTheme() { if (store.state.settings.darkMode) document.body.classList.add('dark'); else document.body.classList.remove('dark'); }
 async function compressImage(file) {
@@ -203,10 +208,9 @@ function loadNextCard() {
     if (currentCard.backImage) { els.study.backImage.innerHTML = `<img src="${currentCard.backImage}">`; els.study.backImage.classList.remove('hidden'); } 
     else { els.study.backImage.classList.add('hidden'); }
 
-    // 重置为正面状态
     els.study.backWrapper.classList.add('hidden'); 
     els.study.controls.classList.add('hidden');
-    els.study.hint.textContent = "点击查看答案"; // 重置提示语
+    els.study.hint.textContent = "点击查看答案"; 
     els.study.progress.textContent = `${currentStudyQueue.length} 待复习`;
     
     ['again', 'hard', 'good', 'easy'].forEach(rating => { document.getElementById(`time-${rating}`).textContent = srs.getLabel(currentCard, rating); });
@@ -292,25 +296,17 @@ function bindEvents() {
     document.getElementById('exit-manage').onclick = () => { switchView('view-decks'); renderDecks(); };
     document.getElementById('exit-trash').onclick = () => { switchView('view-settings'); };
     
-    // --- 修改：将点击监听绑定到容器上，确保点击提示语也能翻转 ---
     els.study.container.onclick = (e) => {
-        // 如果点击的是朗读按钮等，不执行翻转
         if (e.target.closest('button') || e.target.closest('.btn-icon')) return;
-
         const backWrapper = els.study.backWrapper;
         const controls = els.study.controls;
-        
         if (backWrapper.classList.contains('hidden')) {
-            // 当前是正面 -> 切换到背面 (显示答案)
-            backWrapper.classList.remove('hidden'); 
-            controls.classList.remove('hidden');
-            els.study.hint.textContent = "点击回到正面"; // 更新提示语
+            backWrapper.classList.remove('hidden'); controls.classList.remove('hidden');
+            els.study.hint.textContent = "点击回到正面";
             if (store.state.settings.autoSpeakBack) toggleTTS('back');
         } else {
-            // 当前是背面 -> 切换回正面 (隐藏答案)
-            backWrapper.classList.add('hidden'); 
-            controls.classList.add('hidden'); 
-            els.study.hint.textContent = "点击查看答案"; // 恢复提示语
+            backWrapper.classList.add('hidden'); controls.classList.add('hidden');
+            els.study.hint.textContent = "点击查看答案";
             tts.stop();
         }
     };
@@ -385,6 +381,8 @@ function bindEvents() {
     document.getElementById('setting-auto-speak-back').onchange = (e) => { store.state.settings.autoSpeakBack = e.target.checked; store.save(); };
     document.getElementById('setting-use-online-tts').onchange = (e) => { store.state.settings.useOnlineTTS = e.target.checked; store.save(); };
     document.getElementById('setting-new-limit').onchange = (e) => { store.state.settings.newLimit = e.target.value; store.save(); showToast(`每日新卡限制: ${e.target.value === '9999' ? '无限制' : e.target.value + '张'}`); };
+    // 修复：添加朗读次数变更监听
+    document.getElementById('setting-tts-repeat').onchange = (e) => { store.state.settings.ttsRepeat = e.target.value; store.save(); showToast(`自动朗读次数: ${e.target.value}遍`); };
 
     document.getElementById('btn-export-json').onclick = () => { const data = { decks: store.state.decks.filter(d => !d.deleted), cards: store.state.cards.filter(c => !c.deleted), settings: store.state.settings }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `backup_${new Date().toISOString().slice(0,10)}.json`; a.click(); showToast('已导出 JSON'); };
     document.getElementById('btn-import-json').onclick = () => { els.fileInput.click(); };

@@ -5,13 +5,14 @@ export const store = {
         cards: [], 
         settings: { 
             darkMode: false,
-            newLimit: 20 // 默认每日新学20个
+            newLimit: 20,
+            ttsRepeat: 1 // 修复：添加此项
         }, 
         currentDeckId: null, 
         stats: { 
             activity: {},
-            lastStudyDate: '', // 记录最后学习日期
-            todayNewCount: 0   // 记录今日已学新卡数量
+            lastStudyDate: '', 
+            todayNewCount: 0   
         } 
     },
     init() {
@@ -22,7 +23,6 @@ export const store = {
             const savedSettings = JSON.parse(localStorage.getItem(KEYS.SETTINGS) || '{}');
             this.state.settings = { ...this.state.settings, ...savedSettings };
             
-            // 恢复统计数据，如果是旧版本数据，stats可能在settings里或者不完整
             if (this.state.settings._activity) {
                 this.state.stats.activity = this.state.settings._activity;
             }
@@ -32,14 +32,13 @@ export const store = {
                 this.state.stats.todayNewCount = daily.todayNewCount || 0;
             }
 
-            this.checkDailyStats(); // 检查是否跨天
+            this.checkDailyStats();
         } catch (e) { console.error("本地数据损坏", e); this.reset(); }
     },
     save() {
         localStorage.setItem(KEYS.DECKS, JSON.stringify(this.state.decks));
         localStorage.setItem(KEYS.CARDS, JSON.stringify(this.state.cards));
         
-        // 保存统计数据到 Settings (为了兼容现有结构)
         this.state.settings._activity = this.state.stats.activity;
         this.state.settings._dailyStats = {
             lastStudyDate: this.state.stats.lastStudyDate,
@@ -47,11 +46,8 @@ export const store = {
         };
         localStorage.setItem(KEYS.SETTINGS, JSON.stringify(this.state.settings));
     },
-    loadActivity() { 
-        // 已经在 init 中处理，为了兼容接口保留空函数
-    },
+    loadActivity() {},
     
-    // --- 新增：每日统计逻辑 ---
     checkDailyStats() {
         const todayStr = new Date().toDateString();
         if (this.state.stats.lastStudyDate !== todayStr) {
@@ -66,7 +62,6 @@ export const store = {
         this.state.stats.todayNewCount = (this.state.stats.todayNewCount || 0) + 1;
         this.save();
     },
-    // -----------------------
 
     addDeck(name) {
         const newDeck = { id: Date.now().toString(), name, count: 0, lastModified: new Date().toISOString() };
@@ -154,7 +149,7 @@ export const store = {
         this.state.cards = data.cards; this.state.decks = data.decks;
         if (data.settings) this.state.settings = data.settings;
         if (data.stats) this.state.stats = data.stats;
-        // 恢复每日统计
+        
         if (this.state.settings._dailyStats) {
             this.state.stats.lastStudyDate = this.state.settings._dailyStats.lastStudyDate;
             this.state.stats.todayNewCount = this.state.settings._dailyStats.todayNewCount;

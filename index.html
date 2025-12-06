@@ -77,6 +77,14 @@
                         </select>
                     </div>
                     <div class="setting-item">
+                        <span>自动朗读次数</span>
+                        <select id="setting-tts-repeat">
+                            <option value="1" selected>1 遍</option>
+                            <option value="2">2 遍</option>
+                            <option value="3">3 遍</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
                         <span>优先使用百度语音</span>
                         <label class="switch">
                             <input type="checkbox" id="setting-use-online-tts">
@@ -98,7 +106,6 @@
                         </label>
                     </div>
                 </div>
-                <!-- 新增：学习设置 -->
                 <div class="setting-group">
                     <div class="setting-title">学习设置</div>
                     <div class="setting-item">
@@ -121,7 +128,7 @@
                     <div class="setting-item clickable" id="btn-force-sync"><span><i class="fas fa-cloud-upload-alt" style="color: var(--primary);"></i> 强制覆盖云端</span><i class="fas fa-chevron-right"></i></div>
                     <div class="setting-item clickable" id="btn-clear-data" style="color: #ff4d4d;"><span><i class="fas fa-trash"></i> 清空数据</span><i class="fas fa-chevron-right"></i></div>
                 </div>
-                <div class="app-version">Version 2.3.0 (Study Limit)</div>
+                <div class="app-version">Version 2.3.2 (UI Fix)</div>
             </div>
         </div>
 
@@ -150,8 +157,9 @@
                         <div class="card-content rich-text" id="card-back-content"></div>
                         <button class="btn-text tts-btn" id="tts-btn-back"><i class="fas fa-volume-up"></i> <span>朗读</span><div class="wave hidden"><span></span><span></span><span></span></div></button>
                     </div>
+                    <!-- 提示语移入卡片内部 -->
+                    <div class="card-hint">点击翻转</div>
                 </div>
-                <div class="card-hint">点击翻转</div>
             </div>
             <div class="controls hidden" id="study-controls">
                 <button class="btn-rate rate-again" data-rating="again">全忘<br><small id="time-again">-</small></button>
@@ -193,7 +201,6 @@
             <h3 id="modal-card-title">卡片</h3>
             <div class="input-group"><label>库</label><select id="input-card-deck"></select></div>
             
-            <!-- 正面区域 -->
             <div class="input-group" style="border:1px solid var(--border-color); padding:10px; border-radius:8px;">
                 <label style="font-weight:bold; color:var(--primary);">正面 (问题)</label>
                 <textarea id="input-card-front" rows="2" placeholder="输入文字..." style="margin-bottom:10px;"></textarea>
@@ -207,7 +214,6 @@
                 </div>
             </div>
 
-            <!-- 背面区域 -->
             <div class="input-group" style="border:1px solid var(--border-color); padding:10px; border-radius:8px;">
                 <label style="font-weight:bold; color:var(--primary);">背面 (答案)</label>
                 <textarea id="input-card-back" rows="2" placeholder="输入文字..." style="margin-bottom:10px;"></textarea>
