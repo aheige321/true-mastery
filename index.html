@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <!-- 顶部栏 -->
     <header class="app-header">
         <div class="logo">真掌握</div>
         <div class="header-actions">
@@ -19,19 +20,37 @@
         </div>
     </header>
 
+    <!-- 主内容容器 -->
     <main class="container" id="main-container">
+        
+        <!-- 1. 记忆库列表 (首页) -->
         <div id="view-decks" class="view active">
-            <div class="stats-bar" id="global-stats"><span>加载中...</span></div>
+            <div class="stats-bar" id="global-stats">
+                <span>加载中...</span>
+            </div>
             <div class="deck-list" id="deck-list"></div>
-            <div class="empty-state hidden" id="empty-state"><i class="fas fa-layer-group"></i><p>暂无记忆库，点击底部 + 号添加</p></div>
+            <div class="empty-state hidden" id="empty-state">
+                <i class="fas fa-layer-group"></i>
+                <p>暂无记忆库，点击底部 + 号添加</p>
+            </div>
         </div>
 
+        <!-- 2. 统计页面 -->
         <div id="view-stats" class="view hidden">
             <div class="stats-container">
                 <div class="stats-card">
                     <h3>学习活跃度 (最近一年)</h3>
                     <div class="heatmap-scroll">
                         <div class="heatmap" id="stats-heatmap"></div>
+                    </div>
+                    <div class="heatmap-legend">
+                        <span>少</span>
+                        <span class="heat-dot l0"></span>
+                        <span class="heat-dot l1"></span>
+                        <span class="heat-dot l2"></span>
+                        <span class="heat-dot l3"></span>
+                        <span class="heat-dot l4"></span>
+                        <span>多</span>
                     </div>
                 </div>
 
@@ -63,6 +82,7 @@
             </div>
         </div>
 
+        <!-- 3. 设置页面 -->
         <div id="view-settings" class="view hidden">
             <div class="settings-list">
                 <div class="setting-group">
@@ -106,58 +126,81 @@
                         </label>
                     </div>
                 </div>
+
                 <div class="setting-group">
-                    <div class="setting-title">学习设置</div>
-                    <div class="setting-item">
-                        <span>每天新学数量</span>
-                        <select id="setting-new-limit">
-                            <option value="5">5 张</option>
-                            <option value="10">10 张</option>
-                            <option value="20" selected>20 张</option>
-                            <option value="50">50 张</option>
-                            <option value="9999">不限制</option>
-                        </select>
+                    <div class="setting-title">数据管理</div>
+                    <div class="setting-item clickable" id="btn-view-trash">
+                        <span><i class="fas fa-trash-restore"></i> 回收站</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                    <div class="setting-item clickable" id="btn-export-json">
+                        <span><i class="fas fa-file-export"></i> 导出备份 (JSON)</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                    <div class="setting-item clickable" id="btn-import-json">
+                        <span><i class="fas fa-file-import"></i> 导入备份 (恢复数据)</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                    <input type="file" id="file-import-input" accept=".json" style="display: none;">
+                    <div class="setting-item clickable" id="btn-download-cloud">
+                        <span><i class="fas fa-cloud-download-alt" style="color: #4cc9f0;"></i> 从云端下载 (恢复)</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                    <div class="setting-item clickable" id="btn-force-sync">
+                        <span><i class="fas fa-cloud-upload-alt" style="color: var(--primary);"></i> 强制覆盖云端 (修复)</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                    <div class="setting-item clickable" id="btn-clear-data" style="color: #ff4d4d;">
+                        <span><i class="fas fa-trash"></i> 清空本地数据</span>
+                        <i class="fas fa-chevron-right"></i>
                     </div>
                 </div>
-                <div class="setting-group"><div class="setting-title">数据管理</div>
-                    <div class="setting-item clickable" id="btn-view-trash"><span><i class="fas fa-trash-restore"></i> 回收站</span><i class="fas fa-chevron-right"></i></div>
-                    <div class="setting-item clickable" id="btn-export-json"><span><i class="fas fa-file-export"></i> 导出备份</span><i class="fas fa-chevron-right"></i></div>
-                    <div class="setting-item clickable" id="btn-import-json"><span><i class="fas fa-file-import"></i> 导入备份</span><i class="fas fa-chevron-right"></i></div>
-                    <input type="file" id="file-import-input" accept=".json" style="display: none;">
-                    <div class="setting-item clickable" id="btn-download-cloud"><span><i class="fas fa-cloud-download-alt" style="color: #4cc9f0;"></i> 从云端下载</span><i class="fas fa-chevron-right"></i></div>
-                    <div class="setting-item clickable" id="btn-force-sync"><span><i class="fas fa-cloud-upload-alt" style="color: var(--primary);"></i> 强制覆盖云端</span><i class="fas fa-chevron-right"></i></div>
-                    <div class="setting-item clickable" id="btn-clear-data" style="color: #ff4d4d;"><span><i class="fas fa-trash"></i> 清空数据</span><i class="fas fa-chevron-right"></i></div>
-                </div>
-                <div class="app-version">Version 2.3.2 (UI Fix)</div>
+                <div class="app-version">Version 2.2.0</div>
             </div>
         </div>
 
+        <!-- 4. 学习界面 (已修改) -->
         <div id="view-study" class="view hidden">
-            <div class="study-header">
-                <button class="btn-icon" id="exit-study"><i class="fas fa-chevron-left"></i> 返回</button>
-                <span id="study-progress">0/0</span>
-                <div class="study-actions">
-                    <button class="btn-icon" id="btn-edit-card-study"><i class="fas fa-edit"></i></button>
-                    <button class="btn-icon" id="btn-delete-card-study" style="color: #ff4d4d;"><i class="fas fa-trash"></i></button>
+            <div class="study-header-container">
+                <div class="study-header-top">
+                    <button class="btn-icon" id="exit-study"><i class="fas fa-chevron-left"></i> 返回</button>
+                    <div class="study-info">
+                        <span id="study-deck-name" class="study-deck-name">记忆库</span>
+                        <span id="study-learned-count" class="study-learned-count">已学: 0</span>
+                    </div>
+                    <div class="study-actions">
+                        <button class="btn-icon" id="btn-edit-card-study"><i class="fas fa-edit"></i></button>
+                        <button class="btn-icon" id="btn-delete-card-study" style="color: #ff4d4d;"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+                <!-- 进度条 -->
+                <div class="study-progress-bar">
+                    <div class="progress-fill" id="study-progress-fill" style="width: 0%"></div>
                 </div>
             </div>
+
             <div class="flashcard-container">
                 <div class="flashcard" id="flashcard">
+                    <!-- 正面 -->
                     <div class="card-front">
                         <div class="card-label">正面</div>
-                        <div id="card-front-image" class="card-image hidden"></div>
                         <div class="card-content rich-text" id="card-front-content"></div>
                         <div class="card-tags" id="card-front-tags"></div>
-                        <button class="btn-text tts-btn" id="tts-btn-front"><i class="fas fa-volume-up"></i> <span>朗读</span><div class="wave hidden"><span></span><span></span><span></span></div></button>
+                        <button class="btn-text tts-btn" id="tts-btn-front">
+                            <i class="fas fa-volume-up"></i> <span>朗读</span>
+                            <div class="wave hidden"><span></span><span></span><span></span></div>
+                        </button>
                     </div>
+                    <!-- 背面 -->
                     <div class="card-back hidden" id="card-back-wrapper">
                         <hr>
                         <div class="card-label">背面</div>
-                        <div id="card-back-image" class="card-image hidden"></div>
                         <div class="card-content rich-text" id="card-back-content"></div>
-                        <button class="btn-text tts-btn" id="tts-btn-back"><i class="fas fa-volume-up"></i> <span>朗读</span><div class="wave hidden"><span></span><span></span><span></span></div></button>
+                        <button class="btn-text tts-btn" id="tts-btn-back">
+                            <i class="fas fa-volume-up"></i> <span>朗读</span>
+                            <div class="wave hidden"><span></span><span></span><span></span></div>
+                        </button>
                     </div>
-                    <!-- 提示语移入卡片内部 -->
                     <div class="card-hint">点击翻转</div>
                 </div>
             </div>
@@ -169,14 +212,28 @@
             </div>
         </div>
 
+        <!-- 5. 卡片管理列表 -->
         <div id="view-manage" class="view hidden">
-            <div class="manage-header"><button class="btn-icon" id="exit-manage"><i class="fas fa-chevron-left"></i></button><span id="manage-title">列表</span><button class="btn-icon" id="btn-batch-import"><i class="fas fa-file-import"></i></button></div>
+            <div class="manage-header">
+                <button class="btn-icon" id="exit-manage"><i class="fas fa-chevron-left"></i> 返回</button>
+                <span id="manage-title">列表</span>
+                <button class="btn-icon" id="btn-batch-import"><i class="fas fa-file-import"></i> 导入</button>
+            </div>
             <div class="search-bar"><input type="text" id="manage-search-input" placeholder="搜索..."></div>
             <div class="card-list" id="manage-card-list"></div>
         </div>
+
+        <!-- 6. 回收站 -->
         <div id="view-trash" class="view hidden">
-            <div class="manage-header"><button class="btn-icon" id="exit-trash"><i class="fas fa-chevron-left"></i></button><span>回收站</span><button class="btn-icon" id="btn-empty-trash" style="color: #ff4d4d;"><i class="fas fa-ban"></i></button></div>
-            <div class="tabs"><div class="tab active" data-tab="trash-cards">卡片</div><div class="tab" data-tab="trash-decks">记忆库</div></div>
+            <div class="manage-header">
+                <button class="btn-icon" id="exit-trash"><i class="fas fa-chevron-left"></i> 返回</button>
+                <span>回收站</span>
+                <button class="btn-icon" id="btn-empty-trash" style="color: #ff4d4d;"><i class="fas fa-ban"></i></button>
+            </div>
+            <div class="tabs">
+                <div class="tab active" data-tab="trash-cards">卡片</div>
+                <div class="tab" data-tab="trash-decks">记忆库</div>
+            </div>
             <div id="trash-list-container" class="card-list"></div>
         </div>
     </main>
@@ -199,34 +256,10 @@
         </div>
         <div id="modal-card" class="modal-box hidden">
             <h3 id="modal-card-title">卡片</h3>
+            <p class="modal-tip">支持格式：**加粗**，*斜体*</p>
             <div class="input-group"><label>库</label><select id="input-card-deck"></select></div>
-            
-            <div class="input-group" style="border:1px solid var(--border-color); padding:10px; border-radius:8px;">
-                <label style="font-weight:bold; color:var(--primary);">正面 (问题)</label>
-                <textarea id="input-card-front" rows="2" placeholder="输入文字..." style="margin-bottom:10px;"></textarea>
-                <div class="image-upload-area" id="btn-upload-front" style="padding:8px; font-size:0.8rem;">
-                    <i class="fas fa-image"></i> 添加正面图片
-                </div>
-                <input type="file" id="file-front" accept="image/*" style="display:none">
-                <div id="preview-front-container" class="hidden" style="position:relative; margin-top:5px;">
-                    <img id="preview-front-img" src="" style="max-width:100%; max-height:100px; border-radius:4px;">
-                    <button id="btn-remove-front" style="position:absolute; top:-5px; right:-5px; background:red; color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer;">×</button>
-                </div>
-            </div>
-
-            <div class="input-group" style="border:1px solid var(--border-color); padding:10px; border-radius:8px;">
-                <label style="font-weight:bold; color:var(--primary);">背面 (答案)</label>
-                <textarea id="input-card-back" rows="2" placeholder="输入文字..." style="margin-bottom:10px;"></textarea>
-                <div class="image-upload-area" id="btn-upload-back" style="padding:8px; font-size:0.8rem;">
-                    <i class="fas fa-image"></i> 添加背面图片
-                </div>
-                <input type="file" id="file-back" accept="image/*" style="display:none">
-                <div id="preview-back-container" class="hidden" style="position:relative; margin-top:5px;">
-                    <img id="preview-back-img" src="" style="max-width:100%; max-height:100px; border-radius:4px;">
-                    <button id="btn-remove-back" style="position:absolute; top:-5px; right:-5px; background:red; color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer;">×</button>
-                </div>
-            </div>
-
+            <div class="input-group"><label>正面</label><textarea id="input-card-front" rows="2"></textarea></div>
+            <div class="input-group"><label>背面</label><textarea id="input-card-back" rows="2"></textarea></div>
             <div class="input-group"><label>标签</label><input type="text" id="input-card-tags"></div>
             <div class="modal-actions"><button class="btn-text" id="btn-cancel-card">取消</button><button class="btn-primary" id="btn-save-card">保存</button></div>
         </div>
@@ -235,6 +268,13 @@
             <p style="font-size:0.8rem;color:#666;margin-bottom:10px;">格式：正面||背面 (一行一条)</p>
             <div class="input-group"><textarea id="input-batch-text" rows="10"></textarea></div>
             <div class="modal-actions"><button class="btn-text" id="btn-cancel-batch">取消</button><button class="btn-primary" id="btn-save-batch">导入</button></div>
+        </div>
+        <!-- 结算弹窗 -->
+        <div id="modal-settlement" class="modal-box hidden" style="text-align:center;">
+            <div style="font-size:3rem;margin-bottom:10px;">🎉</div>
+            <h3 style="margin-bottom:10px;">今日目标达成！</h3>
+            <p id="settlement-msg" style="color:var(--text-sub);margin-bottom:20px;">本次复习 0 张</p>
+            <button class="btn-primary" id="btn-settlement-ok" style="width:100%;">回到首页</button>
         </div>
     </div>
     <div id="action-sheet-overlay" class="hidden">
@@ -253,6 +293,6 @@
     <div id="loading-mask" class="hidden"><div class="spinner"></div><p>处理中...</p></div>
     <div id="toast"></div>
 
-    <script type="module" src="js/app.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
