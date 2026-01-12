@@ -6,8 +6,10 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Ro
 
 .app-header { height: var(--header-height); background: var(--primary); color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; }
 .header-actions i { margin-left: 20px; cursor: pointer; font-size: 1.2rem; }
+
 .container { flex: 1; overflow-y: auto; position: relative; padding-bottom: calc(var(--footer-height) + 20px); }
 .view { padding: 15px; min-height: 100%; }
+
 .fab-btn { position: fixed; bottom: calc(var(--footer-height) + var(--safe-area-bottom) + 20px); right: 20px; width: 56px; height: 56px; border-radius: 50%; background: var(--primary); color: white; border: none; box-shadow: 0 4px 12px rgba(67, 97, 238, 0.4); font-size: 1.5rem; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.2s; z-index: 90; }
 .fab-btn:active { transform: scale(0.9); }
 
@@ -38,7 +40,9 @@ body.dark .heat-dot { background: #333; }
 .chart-legend { font-size: 0.85rem; color: var(--text-sub); }
 .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
-.dot.new { background: #a4b0be; } .dot.learning { background: #ff9f43; } .dot.review { background: #ff4d4d; } .dot.mastered { background: #2ed573; } .dot.graduated { background: #ffd700; box-shadow: 0 0 4px rgba(255, 215, 0, 0.5); }
+.dot.new { background: #a4b0be; } .dot.learning { background: #ff9f43; } .dot.review { background: #ff4d4d; } .dot.mastered { background: #2ed573; }
+.dot.graduated { background: #ffd700; box-shadow: 0 0 4px rgba(255, 215, 0, 0.5); }
+
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .stat-box { background: var(--bg-color); padding: 15px; border-radius: 8px; text-align: center; }
 .stat-num { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
@@ -71,61 +75,25 @@ input:checked + .slider:before { transform: translateX(16px); }
 .tag { display: inline-block; background: rgba(67, 97, 238, 0.1); color: var(--primary); font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; margin-right: 4px; }
 .card-list-actions i { padding: 8px; color: var(--text-sub); margin-left: 5px; }
 
-.study-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; color: var(--text-sub); }
+/* --- 学习界面新样式 --- */
+.study-header-container { margin-bottom: 15px; }
+.study-header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; color: var(--text-sub); }
+.study-info { display: flex; flex-direction: column; align-items: center; }
+.study-deck-name { font-weight: bold; color: var(--text-color); font-size: 1rem; }
+.study-learned-count { font-size: 0.8rem; color: var(--success-color); font-weight: bold; }
+.study-progress-bar { height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden; width: 100%; }
+.progress-fill { height: 100%; background: var(--success-color); width: 0%; transition: width 0.3s ease; }
+
 .btn-icon { background: none; border: none; color: inherit; font-size: 1rem; cursor: pointer; padding: 5px 10px; }
 .study-actions { display: flex; gap: 5px; }
-.flashcard-container {
-    height: 60vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.flashcard {
-    background: var(--card-bg);
-    width: 100%;
-    height: 100%;
-    border-radius: 16px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    position: relative;
-    cursor: pointer;
-    user-select: none;
-    text-align: center;
-    overflow-y: auto; 
-    padding: 20px;
-    padding-bottom: 50px;
-}
-
-.card-front,
-.card-back-wrapper {
-    width: 100%;
-}
-
+.flashcard-container { height: 60vh; display: flex; justify-content: center; align-items: center; }
+.flashcard { background: var(--card-bg); width: 100%; height: 100%; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; position: relative; cursor: pointer; user-select: none; }
 .card-label { font-size: 0.75rem; color: var(--text-sub); text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px; opacity: 0.5; }
 .card-content { font-size: 1.8rem; word-break: break-word; line-height: 1.4; margin-bottom: 10px; white-space: pre-wrap; }
 .rich-text b, .rich-text strong { color: var(--primary); font-weight: bold; }
 .rich-text i, .rich-text em { font-style: italic; opacity: 0.8; }
 .card-tags { margin-top: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
-.card-hint {
-    position: absolute;
-    bottom: 15px;
-    left: 0;
-    right: 0;
-    text-align: center;
-    font-size: 0.8rem;
-    color: var(--text-sub);
-    opacity: 0.5;
-    pointer-events: none; 
-    background: var(--card-bg);
-    border-top: 1px dashed rgba(0,0,0,0.05);
-    padding-top: 10px;
-    margin: 0 20px;
-}
-.card-image { margin-bottom: 15px; max-height: 200px; width: 100%; display: flex; justify-content: center; flex-shrink: 0; }
-.card-image img { max-width: 100%; max-height: 200px; border-radius: 8px; object-fit: contain; }
-.image-upload-area { border: 2px dashed var(--border-color); padding: 15px; text-align: center; border-radius: 8px; cursor: pointer; color: var(--text-sub); font-size: 0.9rem; transition: all 0.2s; }
-.image-upload-area:hover { border-color: var(--primary); color: var(--primary); background: rgba(67,97,238,0.05); }
-
+.card-hint { position: absolute; bottom: 15px; font-size: 0.8rem; color: var(--text-sub); opacity: 0.5; }
 hr { width: 50%; border: 0; border-top: 1px solid var(--border-color); margin: 15px 0; }
 .btn-text { background: none; border: none; color: var(--primary); font-size: 1rem; margin-top: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 20px; transition: background 0.2s; }
 .btn-text:active { background: rgba(0,0,0,0.05); }
@@ -171,7 +139,7 @@ hr { width: 50%; border: 0; border-top: 1px solid var(--border-color); margin: 1
 #loading-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; flex-direction: column; color: white; z-index: 2000; }
 .spinner { width: 40px; height: 40px; border: 4px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-#toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: rgba(30, 30, 30, 0.9); color: white; padding: 8px 16px; border-radius: 20px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 3000; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+#toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: rgba(30, 30, 30, 0.9); color: white; padding: 10px 20px; border-radius: 25px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 3000; font-size: 0.95rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; max-width: 80%; }
 #toast.show { opacity: 1; }
 
 .tabs { display: flex; margin-bottom: 15px; background: var(--card-bg); border-radius: 8px; padding: 5px; }
