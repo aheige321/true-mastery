@@ -128,6 +128,22 @@
                 </div>
 
                 <div class="setting-group">
+                    <div class="setting-title">学习设置</div>
+                    <div class="setting-item">
+                        <span>每天新学卡片数量</span>
+                        <select id="setting-daily-new-limit">
+                            <option value="5">5 张</option>
+                            <option value="10">10 张</option>
+                            <option value="20" selected>20 张</option>
+                            <option value="30">30 张</option>
+                            <option value="50">50 张</option>
+                            <option value="100">100 张</option>
+                            <option value="999">不限制</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-group">
                     <div class="setting-title">数据管理</div>
                     <div class="setting-item clickable" id="btn-view-trash">
                         <span><i class="fas fa-trash-restore"></i> 回收站</span>
@@ -196,6 +212,7 @@
                         <hr>
                         <div class="card-label">背面</div>
                         <div class="card-content rich-text" id="card-back-content"></div>
+                        <div class="card-back-note rich-text" id="card-back-note"></div>
                         <button class="btn-text tts-btn" id="tts-btn-back">
                             <i class="fas fa-volume-up"></i> <span>朗读</span>
                             <div class="wave hidden"><span></span><span></span><span></span></div>
@@ -260,12 +277,13 @@
             <div class="input-group"><label>库</label><select id="input-card-deck"></select></div>
             <div class="input-group"><label>正面</label><textarea id="input-card-front" rows="2"></textarea></div>
             <div class="input-group"><label>背面</label><textarea id="input-card-back" rows="2"></textarea></div>
+            <div class="input-group"><label>背面备注</label><textarea id="input-card-note" rows="1" placeholder="可选，朗读时不读"></textarea></div>
             <div class="input-group"><label>标签</label><input type="text" id="input-card-tags"></div>
             <div class="modal-actions"><button class="btn-text" id="btn-cancel-card">取消</button><button class="btn-primary" id="btn-save-card">保存</button></div>
         </div>
         <div id="modal-batch" class="modal-box hidden">
             <h3>批量导入</h3>
-            <p style="font-size:0.8rem;color:#666;margin-bottom:10px;">格式：正面||背面 (一行一条)</p>
+            <p style="font-size:0.8rem;color:#666;margin-bottom:10px;">格式：正面||背面||备注（备注可选，朗读时不读备注）</p>
             <div class="input-group"><textarea id="input-batch-text" rows="10"></textarea></div>
             <div class="modal-actions"><button class="btn-text" id="btn-cancel-batch">取消</button><button class="btn-primary" id="btn-save-batch">导入</button></div>
         </div>
