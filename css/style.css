@@ -90,6 +90,7 @@ input:checked + .slider:before { transform: translateX(16px); }
 .flashcard { background: var(--card-bg); width: 100%; height: 100%; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; position: relative; cursor: pointer; user-select: none; }
 .card-label { font-size: 0.75rem; color: var(--text-sub); text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px; opacity: 0.5; }
 .card-content { font-size: 1.8rem; word-break: break-word; line-height: 1.4; margin-bottom: 10px; white-space: pre-wrap; }
+.card-back-note { font-size: 0.95rem; color: var(--text-sub); opacity: 0.85; margin-top: 8px; margin-bottom: 8px; word-break: break-word; line-height: 1.35; white-space: pre-wrap; }
 .rich-text b, .rich-text strong { color: var(--primary); font-weight: bold; }
 .rich-text i, .rich-text em { font-style: italic; opacity: 0.8; }
 .card-tags { margin-top: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
