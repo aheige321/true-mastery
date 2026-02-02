@@ -168,33 +168,36 @@ const tts = {
  */
 const KEYS = { DECKS: 'flashcardDecks', CARDS: 'flashcardCards', SETTINGS: 'settings' };
 const store = {
-    state: { decks: [], cards: [], settings: { darkMode: false, autoSpeakFront: false, autoSpeakBack: false, useOnlineTTS: false }, currentDeckId: null, stats: { activity: {} } },
+    state: { decks: [], cards: [], settings: { darkMode: false, autoSpeakFront: false, autoSpeakBack: false, useOnlineTTS: false, dailyNewLimit: 20 }, currentDeckId: null, stats: { activity: {}, dailyNewUsed: {} } },
     init() {
         try {
             this.state.decks = JSON.parse(localStorage.getItem(KEYS.DECKS) || '[]');
             this.state.cards = JSON.parse(localStorage.getItem(KEYS.CARDS) || '[]');
-            this.state.settings = JSON.parse(localStorage.getItem(KEYS.SETTINGS) || '{"darkMode": false, "autoSpeakFront": false, "autoSpeakBack": false, "useOnlineTTS": false}');
+            this.state.settings = JSON.parse(localStorage.getItem(KEYS.SETTINGS) || '{"darkMode": false, "autoSpeakFront": false, "autoSpeakBack": false, "useOnlineTTS": false, "dailyNewLimit": 20}');
             if (!this.state.stats) this.state.stats = {};
             if (!this.state.stats.activity) this.state.stats.activity = {};
+            if (!this.state.stats.dailyNewUsed) this.state.stats.dailyNewUsed = {};
         } catch (e) { console.error("本地数据损坏", e); this.reset(); }
     },
     save() {
         localStorage.setItem(KEYS.DECKS, JSON.stringify(this.state.decks));
         localStorage.setItem(KEYS.CARDS, JSON.stringify(this.state.cards));
+        if (this.state.stats.activity) this.state.settings._activity = this.state.stats.activity;
+        if (this.state.stats.dailyNewUsed) this.state.settings._dailyNewUsed = this.state.stats.dailyNewUsed;
         localStorage.setItem(KEYS.SETTINGS, JSON.stringify(this.state.settings));
-        if(this.state.stats.activity) {
-            this.state.settings._activity = this.state.stats.activity;
-            localStorage.setItem(KEYS.SETTINGS, JSON.stringify(this.state.settings));
-        }
     },
-    loadActivity() { if (this.state.settings._activity) this.state.stats.activity = this.state.settings._activity; },
+    loadActivity() {
+        if (this.state.settings._activity) this.state.stats.activity = this.state.settings._activity;
+        if (this.state.settings._dailyNewUsed) this.state.stats.dailyNewUsed = this.state.settings._dailyNewUsed;
+    },
     addDeck(name) {
         const newDeck = { id: Date.now().toString(), name, count: 0, lastModified: new Date().toISOString() };
         this.state.decks.push(newDeck); this.save(); return newDeck;
     },
-    addCard(deckId, front, back, tags = []) {
+    addCard(deckId, front, back, tags = [], note = '') {
         const newCard = {
-            id: Date.now() + Math.floor(Math.random() * 1000), deckId, front, back, tags,
+            id: Date.now() + Math.floor(Math.random() * 1000), deckId, front, back, note: note || '',
+            tags,
             status: 'new', interval: 0, easeFactor: 2.5, reviewCount: 0, lastModified: new Date().toISOString(),
             nextReview: new Date().toISOString(), createdAt: new Date().toISOString()
         };
@@ -213,6 +216,12 @@ const store = {
         const today = new Date().toISOString().split('T')[0];
         if (!this.state.stats.activity) this.state.stats.activity = {};
         this.state.stats.activity[today] = (this.state.stats.activity[today] || 0) + 1;
+        this.save();
+    },
+    logNewCardToday() {
+        const today = new Date().toISOString().split('T')[0];
+        if (!this.state.stats.dailyNewUsed) this.state.stats.dailyNewUsed = {};
+        this.state.stats.dailyNewUsed[today] = (this.state.stats.dailyNewUsed[today] || 0) + 1;
         this.save();
     },
     deleteCard(cardId) {
@@ -363,6 +372,7 @@ const els = {
         frontTags: document.getElementById('card-front-tags'),
         backWrapper: document.getElementById('card-back-wrapper'),
         back: document.getElementById('card-back-content'),
+        backNote: document.getElementById('card-back-note'),
         controls: document.getElementById('study-controls'),
         ttsBtnFront: document.getElementById('tts-btn-front'),
         ttsBtnBack: document.getElementById('tts-btn-back')
@@ -373,7 +383,7 @@ const els = {
     stats: { pieChart: document.getElementById('stats-pie-chart'), heatmap: document.getElementById('stats-heatmap'), statNew: document.getElementById('stat-new'), statLearning: document.getElementById('stat-learning'), statReview: document.getElementById('stat-review'), statMastered: document.getElementById('stat-mastered'), totalDecks: document.getElementById('total-decks'), totalCards: document.getElementById('total-cards') },
     modals: { overlay: document.getElementById('modal-overlay'), deck: document.getElementById('modal-deck'), card: document.getElementById('modal-card'), batch: document.getElementById('modal-batch'), settlement: document.getElementById('modal-settlement') },
     sheet: { overlay: document.getElementById('action-sheet-overlay'), btnDeck: document.getElementById('btn-sheet-deck'), btnCard: document.getElementById('btn-sheet-card'), btnCancel: document.getElementById('btn-sheet-cancel') },
-    inputs: { deckName: document.getElementById('input-deck-name'), cardDeck: document.getElementById('input-card-deck'), cardFront: document.getElementById('input-card-front'), cardBack: document.getElementById('input-card-back'), cardTags: document.getElementById('input-card-tags'), batchText: document.getElementById('input-batch-text') },
+    inputs: { deckName: document.getElementById('input-deck-name'), cardDeck: document.getElementById('input-card-deck'), cardFront: document.getElementById('input-card-front'), cardBack: document.getElementById('input-card-back'), cardNote: document.getElementById('input-card-note'), cardTags: document.getElementById('input-card-tags'), batchText: document.getElementById('input-batch-text') },
     toast: document.getElementById('toast'),
     loading: document.getElementById('loading-mask'),
     fileInput: document.getElementById('file-import-input')
@@ -407,6 +417,8 @@ function init() {
     document.getElementById('setting-auto-speak-front').checked = store.state.settings.autoSpeakFront || false;
     document.getElementById('setting-auto-speak-back').checked = store.state.settings.autoSpeakBack || false;
     document.getElementById('setting-use-online-tts').checked = store.state.settings.useOnlineTTS || false;
+    const dailyNewEl = document.getElementById('setting-daily-new-limit');
+    if (dailyNewEl) dailyNewEl.value = String(store.state.settings.dailyNewLimit ?? 20);
 }
 
 function formatText(text) {
@@ -495,11 +507,19 @@ function toggleFullscreen() {
 function startStudy(deckId) {
     store.state.currentDeckId = deckId;
     const now = new Date().toISOString();
-    const cards = store.getCardsForDeck(deckId).filter(c => c.status === 'new' || (c.nextReview && c.nextReview <= now));
-    
+    const allInDeck = store.getCardsForDeck(deckId);
+    const dueCards = allInDeck.filter(c => c.status !== 'new' && c.nextReview && c.nextReview <= now);
+    const newCards = allInDeck.filter(c => c.status === 'new');
+    const today = new Date().toISOString().split('T')[0];
+    const alreadyNewToday = (store.state.stats.dailyNewUsed && store.state.stats.dailyNewUsed[today]) || 0;
+    const limit = parseInt(store.state.settings.dailyNewLimit, 10) || 999;
+    const remainingNew = Math.max(0, (limit >= 999 ? 9999 : limit) - alreadyNewToday);
+    const newCardsLimited = newCards.sort(() => Math.random() - 0.5).slice(0, remainingNew);
+    const cards = [...dueCards, ...newCardsLimited].sort(() => Math.random() - 0.5);
+
     if (cards.length === 0) { if(confirm('该记忆库没有需要复习的卡片。要去添加新卡片吗？')) openCardModal(); return; }
-    
-    currentStudyQueue = cards.sort(() => Math.random() - 0.5);
+
+    currentStudyQueue = cards;
     
     // 初始化会话统计
     currentSessionStats = {
@@ -534,6 +554,11 @@ function loadNextCard() {
         currentCard.tags.forEach(tag => { const span = document.createElement('span'); span.className = 'tag'; span.textContent = tag; els.study.frontTags.appendChild(span); });
     }
     els.study.back.innerHTML = formatText(currentCard.back);
+    const note = (currentCard.note || '').trim();
+    if (els.study.backNote) {
+      els.study.backNote.innerHTML = note ? formatText(note) : '';
+      els.study.backNote.classList.toggle('hidden', !note);
+    }
     els.study.backWrapper.classList.add('hidden'); els.study.controls.classList.add('hidden');
     
     ['again', 'hard', 'good', 'easy'].forEach(rating => { document.getElementById(`time-${rating}`).textContent = srs.getLabel(currentCard, rating); });
@@ -584,6 +609,7 @@ function handleRating(rating) {
         updatedCard.status = rating === 'again' ? 'learning' : 'review';
     }
     store.updateCard(updatedCard); store.logActivity();
+    if (currentCard.status === 'new') store.logNewCardToday();
     currentStudyQueue.shift(); if (rating === 'again') currentStudyQueue.push(updatedCard);
     loadNextCard();
 }
@@ -689,10 +715,10 @@ function openCardModal(cardToEdit = null) {
     if (cardToEdit) {
         currentEditingCardId = cardToEdit.id; document.getElementById('modal-card-title').textContent = '编辑卡片';
         els.inputs.cardFront.value = cardToEdit.front; els.inputs.cardBack.value = cardToEdit.back;
-        els.inputs.cardTags.value = (cardToEdit.tags || []).join(' '); selectEl.value = cardToEdit.deckId;
+        els.inputs.cardNote.value = cardToEdit.note || ''; els.inputs.cardTags.value = (cardToEdit.tags || []).join(' '); selectEl.value = cardToEdit.deckId;
     } else {
         currentEditingCardId = null; document.getElementById('modal-card-title').textContent = '添加卡片';
-        els.inputs.cardFront.value = ''; els.inputs.cardBack.value = ''; els.inputs.cardTags.value = ''; selectEl.value = targetDeckId;
+        els.inputs.cardFront.value = ''; els.inputs.cardBack.value = ''; els.inputs.cardNote.value = ''; els.inputs.cardTags.value = ''; selectEl.value = targetDeckId;
     }
     showModal('card'); setTimeout(() => els.inputs.cardFront.focus(), 100);
 }
@@ -714,6 +740,11 @@ function bindEvents() {
             backWrapper.classList.remove('hidden');
             els.study.controls.classList.remove('hidden');
             if (store.state.settings.autoSpeakBack) toggleTTS('back');
+        } else {
+            backWrapper.classList.add('hidden');
+            els.study.controls.classList.add('hidden');
+            tts.stop();
+            updateTTSButtonState(false);
         }
     };
     
@@ -739,8 +770,8 @@ function bindEvents() {
     els.sheet.btnCancel.onclick = closeSheet; els.sheet.overlay.onclick = closeSheet;
     document.getElementById('btn-cancel-deck').onclick = closeModal; document.getElementById('btn-cancel-card').onclick = closeModal; document.getElementById('btn-cancel-batch').onclick = closeModal;
     document.getElementById('btn-save-deck').onclick = () => { const name = els.inputs.deckName.value.trim(); if (name) { const newDeck = store.addDeck(name); store.state.currentDeckId = newDeck.id; closeModal(); renderDecks(); showToast('已创建'); } };
-    document.getElementById('btn-save-card').onclick = () => { const front = els.inputs.cardFront.value.trim(); const back = els.inputs.cardBack.value.trim(); const selectedDeckId = els.inputs.cardDeck.value; const tagsRaw = els.inputs.cardTags.value.trim(); const tags = tagsRaw ? [...new Set(tagsRaw.split(/\s+/))] : []; if (front && back && selectedDeckId) { if (currentEditingCardId) { const card = store.state.cards.find(c => c.id === currentEditingCardId); if (card) { store.updateCard({ ...card, front, back, deckId: selectedDeckId, tags }); if (currentCard && currentCard.id === currentEditingCardId) { currentCard.front = front; currentCard.back = back; currentCard.tags = tags; els.study.front.innerHTML = formatText(front); els.study.back.innerHTML = formatText(back); els.study.frontTags.innerHTML = ''; tags.forEach(t => { const s = document.createElement('span'); s.className = 'tag'; s.textContent = t; els.study.frontTags.appendChild(s); }); } if (!els.views['view-manage'].classList.contains('hidden')) renderCardList(); } } else { store.addCard(selectedDeckId, front, back, tags); } closeModal(); showToast('已保存'); if (!els.views['view-decks'].classList.contains('hidden')) renderDecks(); if (!els.views['view-manage'].classList.contains('hidden')) renderCardList(); } };
-    document.getElementById('btn-save-batch').onclick = () => { const text = els.inputs.batchText.value.trim(); if (!text) return closeModal(); const lines = text.split('\n'); let count = 0; lines.forEach(line => { if(!line.trim()) return; const parts = line.split('||'); if (parts.length >= 2) { const front = parts[0].trim(); const back = parts.slice(1).join('||').trim(); if (front && back) { store.addCard(store.state.currentDeckId, front, back, []); count++; } } }); closeModal(); showToast(`成功导入 ${count} 张卡片`); if (!els.views['view-manage'].classList.contains('hidden')) renderCardList(); renderDecks(); };
+    document.getElementById('btn-save-card').onclick = () => { const front = els.inputs.cardFront.value.trim(); const back = els.inputs.cardBack.value.trim(); const note = (els.inputs.cardNote && els.inputs.cardNote.value) ? els.inputs.cardNote.value.trim() : ''; const selectedDeckId = els.inputs.cardDeck.value; const tagsRaw = els.inputs.cardTags.value.trim(); const tags = tagsRaw ? [...new Set(tagsRaw.split(/\s+/))] : []; if (front && back && selectedDeckId) { if (currentEditingCardId) { const card = store.state.cards.find(c => c.id === currentEditingCardId); if (card) { store.updateCard({ ...card, front, back, note, deckId: selectedDeckId, tags }); if (currentCard && currentCard.id === currentEditingCardId) { currentCard.front = front; currentCard.back = back; currentCard.note = note; currentCard.tags = tags; els.study.front.innerHTML = formatText(front); els.study.back.innerHTML = formatText(back); if (els.study.backNote) { els.study.backNote.innerHTML = note ? formatText(note) : ''; els.study.backNote.classList.toggle('hidden', !note); } els.study.frontTags.innerHTML = ''; tags.forEach(t => { const s = document.createElement('span'); s.className = 'tag'; s.textContent = t; els.study.frontTags.appendChild(s); }); } if (!els.views['view-manage'].classList.contains('hidden')) renderCardList(); } } else { store.addCard(selectedDeckId, front, back, tags, note); } closeModal(); showToast('已保存'); if (!els.views['view-decks'].classList.contains('hidden')) renderDecks(); if (!els.views['view-manage'].classList.contains('hidden')) renderCardList(); } };
+    document.getElementById('btn-save-batch').onclick = () => { const text = els.inputs.batchText.value.trim(); if (!text) return closeModal(); const lines = text.split('\n'); let count = 0; lines.forEach(line => { if(!line.trim()) return; const parts = line.split('||').map(p => p.trim()); if (parts.length >= 2) { const front = parts[0]; const back = parts.length >= 3 ? parts[1] : parts.slice(1).join('||'); const note = parts.length >= 3 ? parts.slice(2).join('||') : ''; if (front && back) { store.addCard(store.state.currentDeckId, front, back, [], note); count++; } } }); closeModal(); showToast(`成功导入 ${count} 张卡片`); if (!els.views['view-manage'].classList.contains('hidden')) renderCardList(); renderDecks(); };
     document.getElementById('sync-btn').onclick = async () => { toggleLoading(true); try { await syncService.syncData(); renderDecks(); showToast('同步完成', 'success'); } catch (e) { showToast('同步失败', 'error'); } finally { toggleLoading(false); } };
     document.getElementById('theme-toggle').onclick = () => { store.state.settings.darkMode = !store.state.settings.darkMode; store.save(); applyTheme(); };
     
@@ -749,6 +780,7 @@ function bindEvents() {
     document.getElementById('setting-auto-speak-front').onchange = (e) => { store.state.settings.autoSpeakFront = e.target.checked; store.save(); };
     document.getElementById('setting-auto-speak-back').onchange = (e) => { store.state.settings.autoSpeakBack = e.target.checked; store.save(); };
     document.getElementById('setting-use-online-tts').onchange = (e) => { store.state.settings.useOnlineTTS = e.target.checked; store.save(); };
+    document.getElementById('setting-daily-new-limit').onchange = (e) => { store.state.settings.dailyNewLimit = parseInt(e.target.value, 10) || 20; store.save(); showToast(`每天新学上限已设为 ${e.target.value === '999' ? '不限制' : e.target.value + ' 张'}`); };
 
     document.getElementById('btn-export-json').onclick = () => { const data = { decks: store.state.decks.filter(d => !d.deleted), cards: store.state.cards.filter(c => !c.deleted), settings: store.state.settings }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `backup_${new Date().toISOString().slice(0,10)}.json`; a.click(); showToast('已导出 JSON'); };
     document.getElementById('btn-import-json').onclick = () => { els.fileInput.click(); };

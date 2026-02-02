@@ -1,117 +1,127 @@
-import { store } from './store.js';
+const fetch = require('node-fetch');
 
-export const tts = {
-    isPlaying: false,
-    currentAudio: null,
-    speechSynthesisUtterance: null,
+// 内存缓存 Token
+let cachedAccessToken = null;
+let tokenExpireTime = 0;
 
-    async speak(text, lang = 'zh', onEndCallback) {
-        this.stop(); 
-        this.isPlaying = true;
-        
-        // 1. 获取设置
-        const useOnline = store.state.settings.useOnlineTTS;
-        const rate = parseFloat(localStorage.getItem('ttsRate') || 1.0);
-        // 获取重复次数
-        const repeatCount = parseInt(store.state.settings.ttsRepeat || 1);
-        let currentCount = 0;
+// 获取 Token 的辅助函数
+async function getAccessToken(apiKey, secretKey) {
+  // 检查缓存是否有效
+  if (cachedAccessToken && Date.now() < tokenExpireTime) {
+    console.log('Using cached Baidu Token');
+    return cachedAccessToken;
+  }
 
-        const self = this;
+  console.log("Requesting new Baidu Token...");
+  
+  // 百度 Token URL
+  const tokenUrl = `https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${apiKey}&client_secret=${secretKey}`;
 
-        // 定义递归播放函数
-        const playOnce = async () => {
-            currentCount++;
-            
-            // 播放结束的回调
-            const onPlayEnd = () => {
-                if (currentCount < repeatCount && self.isPlaying) {
-                    // 如果还有次数且未被手动停止，延迟一点继续播
-                    setTimeout(() => playOnce(), 300);
-                } else {
-                    self.isPlaying = false;
-                    if (onEndCallback) onEndCallback();
-                }
-            };
+  const response = await fetch(tokenUrl, { method: 'POST' });
+  const data = await response.json();
 
-            if (!useOnline && 'speechSynthesis' in window) {
-                // 原生播放逻辑
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.rate = rate;
-                utterance.lang = lang === 'en' ? 'en-US' : 'zh-CN';
-                utterance.onend = onPlayEnd;
-                utterance.onerror = (e) => {
-                    console.warn('Native TTS failed, trying online...', e);
-                    self.playOnlineTTS(text, lang, onPlayEnd);
-                };
-                self.speechSynthesisUtterance = utterance;
-                window.speechSynthesis.speak(utterance);
-            } else {
-                // 在线播放逻辑
-                await self.playOnlineTTS(text, lang, onPlayEnd);
-            }
-        };
+  if (data.error) {
+    throw new Error(`百度鉴权失败: ${JSON.stringify(data)}`);
+  }
 
-        // 开始播放
-        playOnce();
-    },
+  cachedAccessToken = data.access_token;
+  // 提前 60 秒过期
+  tokenExpireTime = Date.now() + (data.expires_in - 60) * 1000;
+  return cachedAccessToken;
+}
 
-    async playOnlineTTS(text, lang, onEndCallback) {
-        const CACHE_NAME = 'tts-audio-v1';
-        const url = `/.netlify/functions/baidu-tts?text=${encodeURIComponent(text)}&lang=${lang}`;
-        const self = this;
+// --- 关键：这一行是 Netlify 的入口，必须存在且在最外层 ---
+exports.handler = async function(event, context) {
+  // 1. 处理 CORS 预检请求
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS'
+      },
+      body: ''
+    };
+  }
 
-        try {
-            let blob;
-            if ('caches' in window) {
-                const cache = await caches.open(CACHE_NAME);
-                const cachedResponse = await cache.match(url);
-                if (cachedResponse) {
-                    blob = await cachedResponse.blob();
-                } else {
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    const responseToCache = response.clone();
-                    cache.put(url, responseToCache);
-                    blob = await response.blob();
-                }
-            } else {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('Network response was not ok');
-                blob = await response.blob();
-            }
+  try {
+    const { text, lang = 'zh' } = event.queryStringParameters || {};
+    const API_KEY = process.env.BAIDU_API_KEY;
+    const SECRET_KEY = process.env.BAIDU_SECRET_KEY;
 
-            const audioUrl = URL.createObjectURL(blob);
-            this.currentAudio = new Audio(audioUrl);
-            this.currentAudio.playbackRate = parseFloat(localStorage.getItem('ttsRate') || 1.0);
-            
-            this.currentAudio.onended = () => {
-                if (onEndCallback) onEndCallback();
-                URL.revokeObjectURL(audioUrl);
-            };
-
-            this.currentAudio.onerror = (e) => {
-                console.error("Audio playback error:", e);
-                if (onEndCallback) onEndCallback();
-            };
-
-            await this.currentAudio.play();
-
-        } catch (error) {
-            console.error("TTS Error:", error);
-            if (onEndCallback) onEndCallback();
-        }
-    },
-
-    stop() {
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-        }
-        if (this.currentAudio) {
-            this.currentAudio.pause();
-            this.currentAudio.currentTime = 0;
-            this.currentAudio = null;
-        }
-        this.isPlaying = false;
+    // 2. 检查环境变量
+    if (!API_KEY || !SECRET_KEY) {
+      console.error("Missing Baidu Env Vars");
+      throw new Error('服务器端未读取到 BAIDU_API_KEY 或 BAIDU_SECRET_KEY');
     }
+
+    if (!text) {
+      return { statusCode: 400, body: JSON.stringify({ error: '缺少 text 参数' }) };
+    }
+
+    // 3. 获取 Token
+    const token = await getAccessToken(API_KEY, SECRET_KEY);
+    
+    // 4. 准备参数 (使用 URLSearchParams)
+    const baiduLang = lang === 'en' ? 'en' : 'zh';
+    const params = new URLSearchParams();
+    params.append('tex', text.substring(0, 1024));
+    params.append('tok', token);
+    params.append('cuid', 'flashcard_user_' + Math.random().toString(36).slice(2));
+    params.append('ctp', '1');
+    params.append('lan', baiduLang);
+    params.append('spd', '5');
+    params.append('pit', '5');
+    params.append('vol', '9');
+    params.append('per', baiduLang === 'en' ? '0' : '0');
+
+    console.log(`TTS Request: ${text} (${baiduLang})`);
+
+    // 5. 请求音频
+    const ttsResponse = await fetch('https://tsn.baidu.com/text2audio', {
+      method: 'POST',
+      body: params,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+
+    const contentType = ttsResponse.headers.get('content-type');
+
+    // 6. 错误处理 (如果返回的是 json 而不是音频)
+    if (contentType && contentType.includes('application/json')) {
+      const errData = await ttsResponse.json();
+      console.error("Baidu API Error:", errData);
+      throw new Error(`百度TTS返回错误: [${errData.err_no}] ${errData.err_msg}`);
+    }
+
+    if (!ttsResponse.ok) {
+       throw new Error(`HTTP Error from Baidu: ${ttsResponse.status}`);
+    }
+
+    // 7. 成功返回音频 Base64
+    const arrayBuffer = await ttsResponse.arrayBuffer();
+    const base64Audio = Buffer.from(arrayBuffer).toString('base64');
+
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'audio/mp3',
+        'Cache-Control': 'public, max-age=31536000, immutable'
+      },
+      body: base64Audio,
+      isBase64Encoded: true
+    };
+
+  } catch (error) {
+    console.error('Baidu TTS Function Error:', error);
+    return {
+      statusCode: 500,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ 
+        error: error.message,
+        type: 'SERVER_ERROR'
+      })
+    };
+  }
 };
