@@ -168,7 +168,7 @@ const tts = {
  */
 const KEYS = { DECKS: 'flashcardDecks', CARDS: 'flashcardCards', SETTINGS: 'settings' };
 const store = {
-    state: { decks: [], cards: [], settings: { darkMode: false, autoSpeakFront: false, autoSpeakBack: false, useOnlineTTS: false, dailyNewLimit: 20 }, currentDeckId: null, stats: { activity: {}, dailyNewUsed: {} } },
+    state: { decks: [], cards: [], settings: { darkMode: false, autoSpeakFront: false, autoSpeakBack: false, useOnlineTTS: false, dailyNewLimit: 20 }, currentDeckId: null, stats: { activity: {}, dailyNewUsed: {}, learnedToday: {} } },
     init() {
         try {
             this.state.decks = JSON.parse(localStorage.getItem(KEYS.DECKS) || '[]');
@@ -177,6 +177,7 @@ const store = {
             if (!this.state.stats) this.state.stats = {};
             if (!this.state.stats.activity) this.state.stats.activity = {};
             if (!this.state.stats.dailyNewUsed) this.state.stats.dailyNewUsed = {};
+            if (!this.state.stats.learnedToday) this.state.stats.learnedToday = {};
         } catch (e) { console.error("本地数据损坏", e); this.reset(); }
     },
     save() {
@@ -184,11 +185,13 @@ const store = {
         localStorage.setItem(KEYS.CARDS, JSON.stringify(this.state.cards));
         if (this.state.stats.activity) this.state.settings._activity = this.state.stats.activity;
         if (this.state.stats.dailyNewUsed) this.state.settings._dailyNewUsed = this.state.stats.dailyNewUsed;
+        if (this.state.stats.learnedToday) this.state.settings._learnedToday = this.state.stats.learnedToday;
         localStorage.setItem(KEYS.SETTINGS, JSON.stringify(this.state.settings));
     },
     loadActivity() {
         if (this.state.settings._activity) this.state.stats.activity = this.state.settings._activity;
         if (this.state.settings._dailyNewUsed) this.state.stats.dailyNewUsed = this.state.settings._dailyNewUsed;
+        if (this.state.settings._learnedToday) this.state.stats.learnedToday = this.state.settings._learnedToday;
     },
     addDeck(name) {
         const newDeck = { id: Date.now().toString(), name, count: 0, lastModified: new Date().toISOString() };
@@ -223,6 +226,16 @@ const store = {
         if (!this.state.stats.dailyNewUsed) this.state.stats.dailyNewUsed = {};
         this.state.stats.dailyNewUsed[today] = (this.state.stats.dailyNewUsed[today] || 0) + 1;
         this.save();
+    },
+    logLearnedToday() {
+        const today = new Date().toISOString().split('T')[0];
+        if (!this.state.stats.learnedToday) this.state.stats.learnedToday = {};
+        this.state.stats.learnedToday[today] = (this.state.stats.learnedToday[today] || 0) + 1;
+        this.save();
+    },
+    getLearnedToday() {
+        const today = new Date().toISOString().split('T')[0];
+        return (this.state.stats.learnedToday && this.state.stats.learnedToday[today]) || 0;
     },
     deleteCard(cardId) {
         const card = this.state.cards.find(c => c.id === cardId);
@@ -520,11 +533,13 @@ function startStudy(deckId) {
     if (cards.length === 0) { if(confirm('该记忆库没有需要复习的卡片。要去添加新卡片吗？')) openCardModal(); return; }
 
     currentStudyQueue = cards;
-    
-    // 初始化会话统计
+
+    const todayLearned = store.getLearnedToday();
+    // 已学：当天累计（同一天内返回再进不会清零）；第二天自动归零
     currentSessionStats = {
         total: currentStudyQueue.length,
-        learned: 0,
+        learned: todayLearned,
+        sessionLearned: 0,
         streak: 0,
         badStreak: 0
     };
@@ -540,7 +555,7 @@ function startStudy(deckId) {
 
 function updateStudyHeader() {
     els.study.learnedCount.textContent = `已学: ${currentSessionStats.learned}`;
-    const progress = currentSessionStats.total > 0 ? (currentSessionStats.learned / currentSessionStats.total) * 100 : 0;
+    const progress = currentSessionStats.total > 0 ? (currentSessionStats.sessionLearned / currentSessionStats.total) * 100 : 0;
     els.study.progressFill.style.width = `${progress}%`;
 }
 
@@ -586,12 +601,14 @@ function handleRating(rating) {
         // Good or Easy
         currentSessionStats.streak++;
         currentSessionStats.badStreak = 0;
-        currentSessionStats.learned++;
-        
+        currentSessionStats.sessionLearned++;
+        store.logLearnedToday();
+        currentSessionStats.learned = store.getLearnedToday();
+
         // 连击鼓励
         if (currentSessionStats.streak >= 5 && currentSessionStats.streak % 5 === 0) {
             showEncouragement('streak');
-        } 
+        }
         // 里程碑鼓励 (如果没触发连击)
         else if (currentSessionStats.learned % 5 === 0) {
             showEncouragement('milestone');
@@ -622,7 +639,7 @@ function showEncouragement(type) {
 }
 
 function showSettlement() {
-    document.getElementById('settlement-msg').textContent = `本次复习 ${currentSessionStats.learned} 张`;
+    document.getElementById('settlement-msg').textContent = `本次复习 ${currentSessionStats.sessionLearned} 张`;
     showModal('settlement');
     document.getElementById('btn-settlement-ok').onclick = () => {
         closeModal();
